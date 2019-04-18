@@ -22,6 +22,7 @@
     let raf = null;
     const canvas = document.getElementsByTagName('canvas')[0];
     const context = canvas.getContext('2d');
+    var l = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
     canvas.width = canvas.height = 16 * (window.devicePixelRatio || 1);
 
@@ -35,6 +36,11 @@
       gainNode.connect(audioContext.destination);
       gainNode.gain.value = 1;
 
+      var a = audioContext.createAnalyser();
+      source.connect(a);
+      a.fftSize = 32;
+      var d = new Uint8Array(16);
+
       const options = {
         audioContext,
         source,
@@ -45,8 +51,8 @@
       const analyser = meyda.createMeydaAnalyzer(options);
       
       function loop(delta) {
-        raf = requestAnimationFrame(loop);
-        const features = analyser.get(['buffer']);
+        raf = setTimeout(loop, 40);
+        const features = analyser.get(['buffer', 'complexSpectrum']);
         if (!features) return;
         const bufferLength = features.buffer.length;
         
@@ -78,9 +84,13 @@
         context.stroke();
 
         setIcon(canvas.toDataURL());
+        var s = [];
+        a.getByteFrequencyData(d);
+        d.forEach(v => s.push(l[Math.floor((v / 255) * 8)]));
+        location.hash = document.title = s.join('');
       }
 
-      raf = requestAnimationFrame(loop);
+      raf = setTimeout(loop, 40);
     }
 
     const song = new Audio();
