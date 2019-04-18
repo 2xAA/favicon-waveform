@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>🎵</title>
+</head>
+<body>
+  <canvas></canvas>
+  <script src="https://unpkg.com/meyda@latest"></script>
+  <script>
+    const meyda = Meyda;
+
+    function setIcon(url) {
+      const link = document.querySelector('link[rel*="icon"]') || document.createElement('link');
+      link.type = 'image/x-icon';
+      link.rel = 'shortcut icon';
+      link.href = url;
+      document.getElementsByTagName('head')[0].appendChild(link);
+    }
+
+    let raf = null;
+    const canvas = document.getElementsByTagName('canvas')[0];
+    const context = canvas.getContext('2d');
+
+    canvas.width = canvas.height = 16 * (window.devicePixelRatio || 1);
+
+    const { width, height } = canvas;
+
+    function start() {
+      const audioContext = new window.AudioContext();
+      const source = audioContext.createMediaElementSource(song);
+      const gainNode = audioContext.createGain();
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      gainNode.gain.value = 1;
+
+      const options = {
+        audioContext,
+        source,
+        bufferSize: 512,
+        hopSize: 256,
+      };
+
+      const analyser = meyda.createMeydaAnalyzer(options);
+      
+      function loop(delta) {
+        raf = requestAnimationFrame(loop);
+        const features = analyser.get(['buffer']);
+        if (!features) return;
+        const bufferLength = features.buffer.length;
+        
+        const buffer = meyda.windowing(features.buffer, this.windowing);
+
+        context.clearRect(0, 0, width, height);
+
+        context.lineWidth = 1;
+        context.strokeStyle = '#000';
+        context.beginPath();
+
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i += 1) {
+          const v = buffer[i]
+          const y = height / 2 + (height / 2) * v
+
+          if (i === 0) {
+            context.moveTo(x, y);
+          } else {
+            context.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        context.lineTo(width, height / 2);
+        context.stroke();
+
+        setIcon(canvas.toDataURL());
+      }
+
+      raf = requestAnimationFrame(loop);
+    }
+
+    const song = new Audio();
+    song.controls = true;
+    song.crossOrigin = 'anonymous';
+    song.volume = 1;
+    song.src = 'https://cors-anywhere.herokuapp.com/https://media.ucollective.org/music/Jredd%20-%20ToxicCanyonZone.mp3';
+    song.onplay = () => {
+      start();
+      song.onplay = undefined;
+    };
+    document.body.appendChild(song);
+  </script>
+</body>
+</html>
